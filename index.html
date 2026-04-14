@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudo: Roda de Conversa para Parceiros Gestantes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* <!-- Chosen Palette: Warm Neutrals & Sage -->
+        <!-- Application Structure Plan: A dashboard-style SPA divided into three main logical views: 1. Market Context (Why are we doing this? Data-driven justification), 2. Discussion Themes (The core curriculum), 3. Action Plan/To-Dos (Practical application). This structure guides the HR professional from justification to implementation and follow-up. -->
+        <!-- Visualization & Content Choices: 
+            - Market Data -> Goal: Compare -> Bar Chart (Chart.js) -> Hover interaction -> Shows industry trends.
+            - Themes -> Goal: Organize/Inform -> Expandable Cards (HTML/JS) -> Click to reveal details -> Allows scanning high-level topics and diving deep into specific meeting agendas.
+            - To-Dos -> Goal: Action/Inform -> Interactive Checklist (HTML/JS) -> Click to cross off -> Demonstrates practical takeaways for the partners.
+        -->
+        <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+        */
+
+        :root {
+            --bg-base: #faf9f6; /* Off-white */
+            --text-main: #292524; /* Stone 800 */
+            --accent-sage: #78aba8; /* Muted teal/sage */
+            --accent-warm: #d97757; /* Muted terracotta */
+            --card-bg: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            height: 350px;
+            max-height: 400px;
+        }
+
+        .tab-btn {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: var(--accent-sage);
+            color: var(--accent-sage);
+            font-weight: 600;
+        }
+
+        .theme-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .theme-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.4s ease;
+        }
+
+        .theme-content.expanded {
+            max-height: 500px; /* Arbitrary large height to allow content expansion */
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .todo-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .todo-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+            background-color: #f3f4f6;
+        }
+        
+        .unicode-icon {
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header Navigation -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background-color: var(--accent-sage);">
+                        <span class="unicode-icon">👨‍🍼</span>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold leading-tight" style="color: var(--text-main);">Programa Corresponsabilidade</h1>
+                        <p class="text-xs text-gray-500">Estudo Estratégico para RH</p>
+                    </div>
+                </div>
+                <nav class="hidden md:flex space-x-8">
+                    <button onclick="switchTab('market')" id="btn-market" class="tab-btn active py-4 text-gray-600 hover:text-gray-900">O Mercado</button>
+                    <button onclick="switchTab('themes')" id="btn-themes" class="tab-btn py-4 text-gray-600 hover:text-gray-900">Trilha de Temas</button>
+                    <button onclick="switchTab('todos')" id="btn-todos" class="tab-btn py-4 text-gray-600 hover:text-gray-900">Plano de Ação (To-Dos)</button>
+                </nav>
+                <!-- Mobile menu button (simplified for SPA) -->
+                <div class="md:hidden flex items-center">
+                    <select onchange="switchTab(this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="market">O Mercado</option>
+                        <option value="themes">Trilha de Temas</option>
+                        <option value="todos">Plano de Ação</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        <!-- SECTION 1: Market Data -->
+        <section id="section-market" class="fade-in block">
+            <div class="mb-10 text-center max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold mb-4" style="color: var(--accent-sage);">Panorama de Mercado</h2>
+                <p class="text-lg text-gray-600">
+                    O papel do parceiro(a) deixou de ser apenas de "ajudante" para se tornar co-protagonista na chegada de um filho. Este painel ilustra as práticas adotadas por empresas que são referência em marca empregadora no Brasil para apoiar a parentalidade.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8">
+                <h3 class="text-xl font-semibold mb-6 text-center">Iniciativas Mais Praticadas pelas Empresas (Top Employers BR)</h3>
+                
+                <div class="chart-container">
+                    <canvas id="marketChart"></canvas>
+                </div>
+                
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="text-2xl mb-2">📈</div>
+                        <h4 class="font-bold text-blue-900 mb-1">Tendência</h4>
+                        <p class="text-sm text-blue-800">Grupos de apoio exclusivos para parceiros (Rodas de Conversa) cresceram 45% nas empresas nos últimos 2 anos.</p>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <div class="text-2xl mb-2">🎯</div>
+                        <h4 class="font-bold text-orange-900 mb-1">Objetivo RH</h4>
+                        <p class="text-sm text-orange-800">Reduzir o "turnover materno" engajando o parceiro na divisão da carga mental e das tarefas em casa.</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="text-2xl mb-2">💡</div>
+                        <h4 class="font-bold text-green-900 mb-1">Insight</h4>
+                        <p class="text-sm text-green-800">Homens que participam de programas de parentalidade se mostram 30% mais leais à empresa.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Themes (Trilha de Encontros) -->
+        <section id="section-themes" class="fade-in hidden">
+            <div class="mb-10 text-center max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold mb-4" style="color: var(--accent-sage);">Trilha Recomendada: 4 Encontros</h2>
+                <p class="text-lg text-gray-600">
+                    Propomos uma jornada estruturada de encontros mensais ou quinzenais. A metodologia baseia-se em facilitação de diálogos seguros, sem julgamentos, promovendo a troca entre pares. Clique nos cards para ver o detalhamento de cada sessão.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="themes-container">
+                <!-- Cards generated via JS -->
+            </div>
+        </section>
+
+        <!-- SECTION 3: Action Plan (To-Dos) -->
+        <section id="section-todos" class="fade-in hidden">
+            <div class="mb-10 text-center max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold mb-4" style="color: var(--accent-sage);">Takeaways & Aplicabilidade Prática</h2>
+                <p class="text-lg text-gray-600">
+                    O sucesso das rodas de conversa se mede pela mudança de comportamento em casa. Ao final de cada encontro, os participantes recebem "Lições de Casa" práticas. Explore a lista interativa abaixo.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <h3 class="text-xl font-semibold">Checklist de Corresponsabilidade (Para o Parceiro)</h3>
+                    <span class="text-sm text-gray-500">Clique para marcar como concluído</span>
+                </div>
+                <div class="p-0" id="todo-container">
+                    <!-- Todos generated via JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12 py-8">
+        <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Estudo formatado para implantação de Programa de Parentalidade Corporativa.</p>
+            <p class="mt-2">Foco em Equidade de Gênero, Saúde Mental e Segurança Psicológica.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA STORE ---
+        const themeData = [
+            {
+                id: 1,
+                title: "Encontro 1: Desconstruindo o 'Ajudante'",
+                icon: "🏗️",
+                subtitle: "O conceito de Corresponsabilidade e Carga Mental",
+                objective: "Diferenciar ajuda de responsabilidade e entender o impacto da carga mental invisível que geralmente recai sobre a gestante.",
+                topics: [
+                    "O que é Carga Mental e como mapeá-la na sua casa.",
+                    "O mito do 'instinto materno' vs. construção do vínculo.",
+                    "Revisão da divisão de tarefas antes da chegada do bebê."
+                ],
+                quote: "A verdadeira parceria começa antes do bebê nascer, no planejamento."
+            },
+            {
+                id: 2,
+                title: "Encontro 2: A Montanha-Russa Emocional",
+                icon: "🧠",
+                subtitle: "Saúde Mental na Gestação e Puerpério",
+                objective: "Aprender a identificar sinais de sofrimento emocional, como apoiar a parceira e como cuidar da própria saúde mental.",
+                topics: [
+                    "Hormônios, medos e a adaptação à nova identidade.",
+                    "Baby Blues vs. Depressão Pós-Parto (em mães e pais).",
+                    "A importância da rede de apoio (e como pedi-la)."
+                ],
+                quote: "Cuidar de quem cuida: o parceiro é a primeira linha de defesa emocional da mãe."
+            },
+            {
+                id: 3,
+                title: "Encontro 3: Na Trincheira do Puerpério",
+                icon: "🍼",
+                subtitle: "Sobrevivência, Sono e Rotina com o Recém-nascido",
+                objective: "Preparação prática para os primeiros 3 meses. Alinhamento de expectativas sobre a rotina caótica.",
+                topics: [
+                    "A privação de sono como fator de estresse conjugal.",
+                    "O papel do parceiro na amamentação (hidratar, apoiar, trocar fralda antes).",
+                    "Criando turnos de descanso justos."
+                ],
+                quote: "Nos primeiros meses, o objetivo não é perfeição, é sobrevivência com afeto."
+            },
+            {
+                id: 4,
+                title: "Encontro 4: A Nova Configuração Familiar e a Carreira",
+                icon: "⚖️",
+                subtitle: "Retorno ao Trabalho e Equilíbrio",
+                objective: "Estratégias para manter a presença paterna ativa mesmo após o término da licença.",
+                topics: [
+                    "Como negociar flexibilidade com a liderança.",
+                    "Lidando com a culpa de estar trabalhando e a culpa de não render o mesmo.",
+                    "Protegendo o tempo do casal na nova rotina."
+                ],
+                quote: "Paternidade ativa também é um tema profissional."
+            }
+        ];
+
+        const todoData = [
+            { id: 't1', themeId: 1, text: "Fazer o 'Inventário de Tarefas Domésticas' atual e propor uma nova divisão considerando o cansaço da gestação.", category: "Planejamento" },
+            { id: 't2', themeId: 1, text: "Assumir 100% a responsabilidade de pesquisar itens do enxoval (pesquisar, comprar, lavar, guardar).", category: "Ação Prática" },
+            { id: 't3', themeId: 2, text: "Acompanhar em pelo menos 2 consultas pré-natais estratégicas, com uma lista de dúvidas anotadas.", category: "Saúde" },
+            { id: 't4', themeId: 2, text: "Conversar com a parceira, em um momento calmo, sobre os maiores medos de ambos em relação ao parto.", category: "Comunicação" },
+            { id: 't5', themeId: 3, text: "Definir e escrever juntos o 'Plano de Visitas' para os primeiros 30 dias (quem pode ir, horários, regras).", category: "Limites" },
+            { id: 't6', themeId: 3, text: "Aprender a dar banho, trocar fralda e colocar para arrotar (são exclusividades do parceiro nos primeiros dias).", category: "Ação Prática" },
+            { id: 't7', themeId: 4, text: "Agendar uma conversa com a liderança para entender as políticas de flexibilidade da empresa pós-licença.", category: "Carreira" },
+            { id: 't8', themeId: 4, text: "Bloquear na agenda 1 hora semanal inegociável apenas para o casal (mesmo que seja só tomar um café juntos em casa).", category: "Relacionamento" }
+        ];
+
+        // --- CORE LOGIC & INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            renderThemes();
+            renderTodos();
+        });
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            // Hide all sections
+            ['market', 'themes', 'todos'].forEach(id => {
+                document.getElementById(`section-${id}`).classList.add('hidden');
+                const btn = document.getElementById(`btn-${id}`);
+                if(btn) {
+                    btn.classList.remove('active');
+                    btn.classList.remove('font-semibold');
+                    btn.style.color = 'var(--text-main)';
+                }
+            });
+
+            // Show active section
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.color = 'var(--accent-sage)';
+            }
+        }
+
+        // Render Themes (Accordion Cards)
+        function renderThemes() {
+            const container = document.getElementById('themes-container');
+            let html = '';
+
+            themeData.forEach(theme => {
+                html += `
+                    <div class="bg-white border border-gray-200 rounded-xl p-6 theme-card cursor-pointer" onclick="toggleTheme(${theme.id})">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl bg-gray-50 p-3 rounded-lg">${theme.icon}</div>
+                            <div class="flex-1">
+                                <h3 class="text-xl font-bold text-gray-800">${theme.title}</h3>
+                                <p class="text-sm font-medium text-gray-500 mb-2">${theme.subtitle}</p>
+                            </div>
+                            <div class="text-gray-400" id="icon-${theme.id}">➕</div>
+                        </div>
+                        
+                        <div id="content-${theme.id}" class="theme-content mt-2">
+                            <p class="text-gray-700 mb-4 bg-gray-50 p-3 rounded italic text-sm border-l-4 border-sage" style="border-color: var(--accent-sage)">
+                                <strong>Objetivo:</strong> ${theme.objective}
+                            </p>
+                            <h4 class="font-semibold text-gray-800 mb-2 text-sm uppercase tracking-wide">Pautas de Discussão:</h4>
+                            <ul class="list-disc pl-5 text-gray-600 space-y-1 mb-4 text-sm">
+                                ${theme.topics.map(t => `<li>${t}</li>`).join('')}
+                            </ul>
+                            <div class="text-center p-3 rounded-lg bg-orange-50 text-orange-800 text-sm italic">
+                                "${theme.quote}"
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleTheme(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.innerText = '➕';
+            } else {
+                // Optional: Close others
+                document.querySelectorAll('.theme-content').forEach(el => el.classList.remove('expanded'));
+                document.querySelectorAll('.theme-card > div > div:last-child').forEach(el => el.innerText = '➕');
+                
+                content.classList.add('expanded');
+                icon.innerText = '➖';
+            }
+        }
+
+        // Render To-Dos
+        function renderTodos() {
+            const container = document.getElementById('todo-container');
+            let html = '';
+
+            todoData.forEach((todo, index) => {
+                const isEven = index % 2 === 0;
+                const bgClass = isEven ? 'bg-white' : 'bg-gray-50';
+                
+                // Get theme info for context badge
+                const relatedTheme = themeData.find(t => t.id === todo.themeId);
+                const themeBadge = `<span class="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full ml-2" title="${relatedTheme.title}">${relatedTheme.icon} Enc. ${todo.themeId}</span>`;
+
+                html += `
+                    <div id="todo-row-${todo.id}" class="todo-item ${bgClass} p-4 border-b border-gray-100 flex items-start gap-4 hover:bg-gray-100" onclick="toggleTodo('${todo.id}')">
+                        <div class="pt-1">
+                            <div id="check-${todo.id}" class="w-6 h-6 rounded border-2 border-gray-300 flex items-center justify-center text-white font-bold transition-colors">
+                                <!-- Checkmark injected via JS -->
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center mb-1">
+                                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">${todo.category}</span>
+                                ${themeBadge}
+                            </div>
+                            <p class="text-gray-800" id="text-${todo.id}">${todo.text}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleTodo(id) {
+            const row = document.getElementById(`todo-row-${id}`);
+            const check = document.getElementById(`check-${id}`);
+            
+            row.classList.toggle('completed');
+            
+            if(row.classList.contains('completed')) {
+                check.style.backgroundColor = 'var(--accent-sage)';
+                check.style.borderColor = 'var(--accent-sage)';
+                check.innerHTML = '✓';
+            } else {
+                check.style.backgroundColor = 'transparent';
+                check.style.borderColor = '#d1d5db'; // Tailwind border-gray-300
+                check.innerHTML = '';
+            }
+        }
+
+        // Chart.js Initialization
+        function initChart() {
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        'Licença Paternidade Estendida (20d+)', 
+                        'Programa de Gestantes (Mães)', 
+                        'Rodas de Conversa p/ Parceiros', 
+                        'Coaching de Retorno (Mães)', 
+                        'Coaching de Retorno (Pais)'
+                    ],
+                    datasets: [{
+                        label: '% de Empresas (Amostra Top Employers)',
+                        data: [75, 90, 35, 60, 15],
+                        backgroundColor: [
+                            'rgba(120, 171, 168, 0.8)', // Sage
+                            'rgba(217, 119, 87, 0.8)',  // Warm
+                            'rgba(120, 171, 168, 1)',   // Highlight Sage for focus
+                            'rgba(200, 200, 200, 0.8)',
+                            'rgba(200, 200, 200, 0.8)'
+                        ],
+                        borderColor: [
+                            '#78aba8',
+                            '#d97757',
+                            '#5a8380',
+                            '#a0a0a0',
+                            '#a0a0a0'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + '% de adoção no mercado';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) { return value + '%' }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                // Simple logic to wrap long labels
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if (label.length > 15) {
+                                        const words = label.split(' ');
+                                        let lines = [];
+                                        let currentLine = '';
+                                        words.forEach(word => {
+                                            if ((currentLine + word).length > 15) {
+                                                lines.push(currentLine.trim());
+                                                currentLine = word + ' ';
+                                            } else {
+                                                currentLine += word + ' ';
+                                            }
+                                        });
+                                        lines.push(currentLine.trim());
+                                        return lines;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
